@@ -173,7 +173,7 @@ foreach($recent as $key => $value) {
 # write results
 $dst->setActiveSheetIndex(0);
 $output = PHPExcel_IOFactory::createWriter($dst, 'Excel2007');
-$output->save("$params[target_dir]/{$params[cases][target_name]}.xlsx");
+$output->save("$params[target_dir]/{$params['cases']['target_name']}.xlsx");
 
 # write status report
 $most_recent = $date;
