@@ -12,7 +12,7 @@ $params = array(
   'cache' => 1,
 
   // status=1 generates a brief status report.  status=date just reports the most recent data in the output file
-  'status' => 0,
+  'status' => 1,
 
   // run-specific settings
   'cases' => array(

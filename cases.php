@@ -35,7 +35,7 @@ if( ! $url ) {
 $params['_url'] = $url;
 $dst->getActiveSheet()
   ->setTitle('EbolaData')
-  ->fromArray(array('ReleaseDate', 'COUNTRY', 'countryId', 'CASES', 'DEATHS'), null, 'A1');
+  ->fromArray(array('ReleaseDate', 'COUNTRY', 'countryId', 'NEW CASES', 'NEW DEATHS', 'TOTAL CASES', 'TOTAL DEATHS', 'MORT RATIO'), null, 'A1');
 
 $x = 2;
 
@@ -43,10 +43,19 @@ $x = 2;
 $src = PHPExcel_IOFactory::load($params['data_dir'] . '/cases-initial.xlsx');
 $s = $src->getSheet();
 $last = $s->getHighestRow();
-$data = $s->rangeToArray("A2:E$last", null, true, false, false);
+$data = $s->rangeToArray("A2:H$last", null, false, false, false);
 
 $dst->getSheet(0)->fromArray($data, null, "A2", true);
 $x = 2 + count($data);
+
+// mark the prepended data with a blue background
+$dst->getSheet(0)->getStyle("A2:H".($x-1))->applyFromArray(array(
+  'fill' => array(
+    'type' => PHPExcel_STyle_Fill::FILL_SOLID,
+	'color' => array('rgb' => 'DCE6F1'),
+  ),
+));
+
 $src->disconnectWorksheets();
 unset($src);
 
@@ -107,13 +116,17 @@ usort($data, '_sort');
 $result = array_fill(0, 4, null);
 foreach($data as $row) {
   list($series,$country,$date,$value) = $row;
+  $end_of_month = end_of_month($date);
   if( $country != $result[1] || $date != $result[0] ) {
     if( $result[2] || $result[3] ) {
 	  $dst->getSheet(0)->fromArray(array(
 	    $result[0],
 		$result[1], preg_replace('/\s+/', '', strtolower($result[1])),
 		$result[2] - $recent[$result[1]]['cases'],
-		(integer) ($result[3] - $recent[$result[1]]['mort']),
+		$result[3] - $recent[$result[1]]['mort'],
+		$result[2],
+		$result[3],
+		"=G$x/F$x",
 	  ), null, "A$x", true);
 	  $x++;
 	  $recent[$result[1]]['cases'] = $result[2];
@@ -150,13 +163,17 @@ if( $result[2] || $result[3] ) {
 	$result[1], preg_replace('/\s+/', '', strtolower($result[1])),
 	$result[2] - $recent[$result[1]]['cases'],
 	$result[3] - $recent[$result[1]]['mort'],
+	$result[2],
+	$result[3],
+	"=G$x/F$x",
   ), null, "A$x", true);
 }
 
-$dst->getActiveSheet()->getStyle("A2:A$x")->getNumberFormat()
-  ->setFormatCode('m/d/yy');
-$dst->getActiveSheet()->getStyle("D2:E$x")->getNumberFormat()
-  ->setFormatCode('0');
+$dst_range = "A2:H$x";
+
+$dst->getActiveSheet()->getStyle("A2:A$x")->getNumberFormat()->setFormatCode('m/d/yy');
+$dst->getActiveSheet()->getStyle("D2:G$x")->getNumberFormat()->setFormatCode('0');
+$dst->getActiveSheet()->getStyle("H2:H$x")->getNumberFormat()->setFormatCode('0.0%');
 
 # Put last 21 days on a 2nd sheet
 $dst->createSheet()->setTitle('Last21')
@@ -169,6 +186,52 @@ foreach($recent as $key => $value) {
   $dst->getSheet(1)->fromArray(array($key, "All", $value['last21'], $value['last21_prev'], "=C$x-D$x", "=C$x/D$x-1"), null, "A$x");
   $x++;
 }
+
+// Roll up mortality rates on a third sheet
+$rows = $dst->getSheet(0)->rangeToArray($dst_range, null, true, false, false);
+$mortality = array();
+foreach($rows as $row) {
+  $end_of_month = end_of_month($row[0]);
+  $country = $row[1];
+  $mortality[$end_of_month][$country] = array($row[5], $row[6], $row[0]);
+}
+
+$dst->createSheet()->setTitle('Mortality')
+  ->fromArray(array('Date', 'Month', 'Year', 'Country', 'Cases', 'Deaths', 'Mort Ratio'), null, 'A1');
+$x = 2;
+foreach($mortality as $key => $rows) {
+  $sum = array(0, 0);
+  foreach($rows as $country => $row) {
+	$dst->getSheet(2)->fromArray(array($row[2], "=TEXT(A$x, \"mmm\")", "=YEAR(A$x)", $country, $row[0], $row[1], "=F$x/E$x"), null, "A$x", true);
+    $sum[0] += $row[0];
+	$sum[1] += $row[1];
+	$x++;
+  }
+
+  $dst->getSheet(2)->fromArray(array($row[2], "=TEXT(A$x, \"mmm\")", "=YEAR(A$x)", 'Total', $sum[0], $sum[1], "=F$x/E$x"), null, "A$x", true);
+  $x++;
+}
+
+$dst->getSheet(2)->getStyle("A2:A$x")->getNumberFormat()->setFormatCode('mmm-yy');
+$dst->getSheet(2)->getStyle("G2:G$x")->getNumberFormat()->setFormatCode('0.0%');
+
+// For cosmetic purposes, set some column widths
+$dst->getSheet(0)->getColumnDimension('A')->setWidth(100/7);
+$dst->getSheet(0)->getColumnDimension('B')->setWidth(180/7);
+$dst->getSheet(0)->getColumnDimension('C')->setWidth(180/7);
+$dst->getSheet(0)->getColumnDimension('D')->setWidth(100/7);
+$dst->getSheet(0)->getColumnDimension('E')->setWidth(100/7);
+$dst->getSheet(0)->getColumnDimension('F')->setWidth(100/7);
+$dst->getSheet(0)->getColumnDimension('G')->setWidth(100/7);
+$dst->getSheet(0)->getColumnDimension('H')->setWidth(100/7);
+
+$dst->getSheet(1)->getColumnDimension('A')->setWidth(180/7);
+$dst->getSheet(1)->getColumnDimension('B')->setWidth(180/7);
+$dst->getSheet(1)->getColumnDimension('C')->setWidth(100/7);
+$dst->getSheet(1)->getColumnDimension('D')->setWidth(100/7);
+
+$dst->getSheet(2)->getColumnDimension('A')->setWidth(100/7);
+$dst->getSheet(2)->getColumnDimension('D')->setWidth(180/7);
 
 # write results
 $dst->setActiveSheetIndex(0);
@@ -232,6 +295,15 @@ function get_file($url, $dst) {
 
   file_put_contents($path, $file);
   return $path;
+}
+
+function end_of_month($date) {
+  static $tz=null;
+
+  if( is_null($tz) ) $tz = date('Z');
+
+  $date = getdate(PHPExcel_Shared_Date::ExcelToPHP($date) - $tz);
+  return PHPExcel_Shared_Date::PHPToExcel(mktime(0, 0, 0, $date['mon']+1, 0, $date['year']));
 }
 
 function ex_date($date) {
