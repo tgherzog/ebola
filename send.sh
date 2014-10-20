@@ -4,7 +4,7 @@
 DEST="therzog1@worldbank.org"
 BASE=`dirname $0`
 
-LAST_RUN=`cat "$BASE/last_run"`
+LAST_RUN=`cat "$BASE/last_run-cases"`
 THIS_RUN=`php "$BASE/cases.php" --cache=0 --status=date`
 
 
