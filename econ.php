@@ -55,6 +55,10 @@ foreach($params['econ']['sources'] as $key => $info) {
   }
 }
 
+// For costmetic purposes, set some column widths
+$dst->getSheet(0)->getColumnDimension('C')->setWidth(180/7);
+$dst->getSheet(1)->getColumnDimension('C')->setWidth(180/7);
+
 # write results
 $dst->setActiveSheetIndex(0);
 $output = PHPExcel_IOFactory::createWriter($dst, 'Excel2007');
