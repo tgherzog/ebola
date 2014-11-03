@@ -25,20 +25,19 @@ fi
 OUTPUT="ebola-cases.xlsx"	# should match the output file from the build script
 
 LAST_RUN=`cat "$BASE/last_run-cases"`
-THIS_RUN=`php "$BASE/cases.php" --cache=0 --status=date`
-
+REPORT=`php "$BASE/cases.php" --cache=0 --status=1`
+THIS_RUN=`echo "$REPORT" | grep "^Most recent date:" | sed -r 's/.+:\\s+//'`
 
 if [ "$LAST_RUN" != "$THIS_RUN" ]; then
 echo $THIS_RUN > "$BASE/last_run-cases"
 mail -r $SENDER -s "Ebola Case Data as of $THIS_RUN - $OUTPUT" -a "$BASE/data/$OUTPUT" $DEST << END_OF_MAIL
-New case data posted: $THIS_RUN
-
+$REPORT
 END_OF_MAIL
 printf "%s - New case data ($THIS_RUN) sent to $LOG_DEST\n" "$LOG_DATE" >> "$LOG"
 
 else
 
-printf "%s - No new case data ($THIS_RUN)\n" "$LOG_DATE" >> "$LOG"
+printf "%s - No new case data (most recent data: $THIS_RUN)\n" "$LOG_DATE" >> "$LOG"
 
 fi
 
@@ -59,6 +58,24 @@ printf "%s - New market data ($THIS_RUN) sent to $LOG_DEST\n" "$LOG_DATE" >> "$L
 
 else
 
-printf "%s - No new market data ($THIS_RUN)\n" "$LOG_DATE" >> "$LOG"
+printf "%s - No new market data (most recent data: $THIS_RUN)\n" "$LOG_DATE" >> "$LOG"
+
+fi
+
+# WFP indicators
+OUTPUT="ebola-wfp.xlsx"	# should match the output file from the build script
+LAST_RUN=`cat "$BASE/last_run-wfp"`
+REPORT=`php "$BASE/wfp.php" --cache=0 --status=1`
+THIS_RUN=`echo "$REPORT" | grep "^Most recent date:" | sed -r 's/.+:\\s+//'`
+if [ "$LAST_RUN" != "$THIS_RUN" ]; then
+echo $THIS_RUN > "$BASE/last_run-wfp"
+mail -r $SENDER -s "Ebola WFP Data as of $THIS_RUN - $OUTPUT" -a "$BASE/data/$OUTPUT" $DEST << END_OF_MAIL
+$REPORT
+END_OF_MAIL
+printf "%s - New WFP data ($THIS_RUN) sent to $LOG_DEST\n" "$LOG_DATE" >> "$LOG"
+
+else
+
+printf "%s - No new WFP data (most recent data: $THIS_RUN)\n" "$LOG_DATE" >> "$LOG"
 
 fi

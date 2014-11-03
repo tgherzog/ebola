@@ -50,6 +50,12 @@ $params = array(
 	  ),
 	),
   ),
+
+  'wfp' => array(
+	'host' => 'data.hdx.rwlabs.org',  // hostname for the HDX repository
+	'id' => 'wfp-indicators',		// dataset ID for the source data. Script is schema dependent, so this probably shouldn't change
+	'target_name' => 'ebola-wfp',
+  ),
 );
 
 
@@ -62,7 +68,7 @@ array_shift($args);
 while( isset($args[0]) && substr($args[0],0,2) == '--' ) {
   $arg = substr(array_shift($args),2);
   list($key,$value) = explode('=', $arg, 2);
-  if( ! $value ) $value = 1;
+  if( ! isset($value) ) $value = 1;
   $params[$key] = $value;
 }
 
